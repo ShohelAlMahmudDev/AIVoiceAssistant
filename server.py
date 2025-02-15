@@ -1,6 +1,6 @@
 import base64
 import json
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request,send_from_directory
 from worker import speech_to_text, text_to_speech, process_message
 from flask_cors import CORS
 import os
@@ -61,6 +61,8 @@ def process_message_route():
     print(response)
     return response
 
-
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 if __name__ == "__main__":
     app.run(port=8000, host='0.0.0.0')
