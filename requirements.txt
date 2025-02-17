@@ -2,3 +2,4 @@ Flask
 Flask_Cors
 requests
 python-dotenv
+jsonify

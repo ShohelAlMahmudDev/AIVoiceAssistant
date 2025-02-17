@@ -9,9 +9,9 @@ load_dotenv()
 # Access the API keys
  
 WATSON_API_KEY_STT = os.getenv("WATSON_API_KEY_STT")
-WATSON_API_KEY_TTS = os.getenv("WATSON_API_KEY_TTS")
+#WATSON_API_KEY_TTS = os.getenv("WATSON_API_KEY_TTS")
 WATSON_API_SERVICE_URL_STT = os.getenv("WATSON_API_SERVICE_URL_STT")
-WATSON_API_SERVICE_URL_TTS = os.getenv("WATSON_API_SERVICE_URL_TTS")
+#WATSON_API_SERVICE_URL_TTS = os.getenv("WATSON_API_SERVICE_URL_TTS")
 TOGETHER_API_KEY=os.getenv("TOGETHER_API_KEY")
 TOGETHER_API_SERVICE_URL = os.getenv("TOGETHER_API_SERVICE_URL")
 
@@ -64,50 +64,7 @@ def speech_to_text(audio_binary):
         print('Error during API request:', e)
         return None
 
-
-def text_to_speech(text, voice="en-US_AllisonV3Voice"):
-    """
-    Converts text to speech using IBM Watson Text-to-Speech API.
-
-    Args:
-        text (str): Text to convert to speech.
-        api_key (str): Your IBM Watson API key.
-        voice (str): Voice model to use (default is "en-US_AllisonV3Voice").
-
-    Returns:
-        bytes: Binary audio data.
-    """
-    # Set up Watson Text-to-Speech HTTP API URL
-    
-    api_url = WATSON_API_SERVICE_URL_TTS + '/v1/synthesize'
-
-    # Set up headers for the HTTP request
-    headers = {
-        'Accept': 'audio/wav',
-        'Content-Type': 'application/json',
-    }
-
-    # Set up the body of the HTTP request
-    json_data = {
-        'text': text,
-        'voice': voice,  # Specify the voice model
-    }
-    # Send an HTTP POST request
-    try:
-        response = requests.post(
-            api_url,
-            headers=headers,
-            json=json_data,
-            auth=('apikey', WATSON_API_KEY_TTS)  # Authenticate using API key
-        )
-        response.raise_for_status()  # Raise an error for bad status codes
-        print('Text-to-speech conversion successful.')
-        return response.content
-
-    except requests.exceptions.RequestException as e:
-        print('Error during API request:', e)
-        return None
-
+ 
 
 def process_message(user_message):
     """
@@ -120,7 +77,7 @@ def process_message(user_message):
         str: OpenAI's response.
     """
     # Set the prompt for OpenAI API
-    prompt = "Act like a personal assistant. You can respond to questions, translate sentences, summarize news, and give recommendations."
+    prompt = "Act like a personal assistant. You can respond to questions, translate sentences, summarize news, and give recommendations.Always try to answer in a single sentence."
 
     # Call the OpenAI API to process the prompt
     try: 
@@ -138,17 +95,25 @@ def process_message(user_message):
                 ],
         }
 
+        # Debug the request payload and headers
+        print("Request Payload:", data)
+        print("Request Headers:", headers)
         response = requests.post(TOGETHER_API_SERVICE_URL, json=data, headers=headers)
 
-        #if response.status_code == 200:
-            #print(response.json()["choices"][0]["message"]["content"])
-        #else:
-            #print(f"Error {response.status_code}: {response.json()}")
- 
-        # Parse the response to get the response message
-        response_text = response.json()["choices"][0]["message"]["content"]
-        return response_text
+        # Print the full response for debugging
+        print("Status Code:", response.status_code)
+        print("Response JSON:", response.json())
 
-    except Exception as e:
-        print('Error during OpenAI API request:', e)
+        # Parse the response
+        response_json = response.json()
+        if "choices" in response_json and len(response_json["choices"]) > 0:
+            response_text = response_json["choices"][0]["message"]["content"]
+            return response_text
+        else:
+            print("Unexpected response format:", response_json)
+            return None
+
+    except requests.exceptions.RequestException as e:
+        print("Error during TOGETHER API request:", e)
         return None
+           

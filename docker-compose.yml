@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  chatbot:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - FLASK_APP=server.py
+      - FLASK_ENV=production
+    env_file:
+      - .env  
+    volumes:
+      - .:/app
+    command: python server.py

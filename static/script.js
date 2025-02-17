@@ -1,7 +1,7 @@
 let lightMode = true;
 let recorder = null;
 let recording = false;
-let voiceOption = "default";
+let voiceOption = "Google US English"; // Default voice
 const responses = [];
 const botRepeatButtonIDToIndexMap = {};
 const userRepeatButtonIDToRecordingMap = {};
@@ -26,25 +26,38 @@ function hideUserLoadingAnimation() {
 }
 
 const getSpeechToText = async (userRecording) => {
-  let response = await fetch(baseUrl + "/speech-to-text", {
-    method: "POST",
-    body: userRecording.audioBlob,
-  });
-  console.log(response);
-  response = await response.json();
-  console.log(response);
-  return response.text;
+  try {
+    let response = await fetch(baseUrl + "/speech-to-text", {
+      method: "POST",
+      body: userRecording.audioBlob,
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    response = await response.json();
+    return response.text; // Ensure the backend returns { text: "recognized text" }
+  } catch (error) {
+    console.error("Error in getSpeechToText:", error);
+    return null;
+  }
 };
 
 const processUserMessage = async (userMessage) => {
-  let response = await fetch(baseUrl + "/process-message", {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ userMessage: userMessage, voice: voiceOption }),
-  });
-  response = await response.json();
-  console.log(response);
-  return response;
+  try {
+    let response = await fetch(baseUrl + "/process-message", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ userMessage: userMessage, voice: voiceOption }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    response = await response.json();
+    return response; // Ensure the backend returns { response: "response text" }
+  } catch (error) {
+    console.error("Error in processUserMessage:", error);
+    return null;
+  }
 };
 
 const cleanTextInput = (value) => {
@@ -93,23 +106,11 @@ const toggleRecording = async () => {
     recorder.start();
   } else {
     const audio = await recorder.stop();
-    sleep(1000);
+    await sleep(1000); // Add a delay to ensure recording stops properly
+    recording = false; // Reset recording state
     return audio;
   }
 };
-
-const playResponseAudio = (function () {
-  const df = document.createDocumentFragment();
-  return function Sound(src) {
-    const snd = new Audio(src);
-    df.appendChild(snd); // keep in fragment until finished playing
-    snd.addEventListener("ended", function () {
-      df.removeChild(snd);
-    });
-    snd.play();
-    return snd;
-  };
-})();
 
 const getRandomID = () => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -121,11 +122,9 @@ const scrollToBottom = () => {
     scrollTop: $("#chat-window")[0].scrollHeight,
   });
 };
-const populateUserMessage = (userMessage, userRecording) => {
-  // Clear the input field
-  $("#message-input").val("");
 
-  // Append the user's message to the message list
+const populateUserMessage = (userMessage, userRecording) => {
+  $("#message-input").val("");
 
   if (userRecording) {
     const userRepeatButtonID = getRandomID();
@@ -152,21 +151,28 @@ const populateUserMessage = (userMessage, userRecording) => {
 const populateBotResponse = async (userMessage) => {
   await showBotLoadingAnimation();
   const response = await processUserMessage(userMessage);
+  if (!response) {
+    hideBotLoadingAnimation();
+    return; // Exit if there's an error
+  }
+
   responses.push(response);
 
   const repeatButtonID = getRandomID();
   botRepeatButtonIDToIndexMap[repeatButtonID] = responses.length - 1;
   hideBotLoadingAnimation();
-  // Append the random message to the message list
+
+  // Append the bot's response to the message list
   $("#message-list").append(
     `<div class='message-line'><div class='message-box${
       !lightMode ? " dark" : ""
     }'>${
-      response.ResponseText
-    }</div><button id='${repeatButtonID}' class='btn volume repeat-button' onclick='playResponseAudio("data:audio/wav;base64," + responses[botRepeatButtonIDToIndexMap[this.id]].openaiResponseSpeech);console.log(this.id)'><i class='fa fa-volume-up'></i></button></div>`
+      response.response
+    }</div><button id='${repeatButtonID}' class='btn volume repeat-button' onclick='textToSpeech(responses[botRepeatButtonIDToIndexMap[this.id]].response, voiceOption)'><i class='fa fa-volume-up'></i></button></div>`
   );
 
-  playResponseAudio("data:audio/wav;base64," + response.ResponseSpeech);
+  // Use Web Speech API to speak the bot's response
+  textToSpeech(response.response, voiceOption);
 
   scrollToBottom();
 };
@@ -229,7 +235,7 @@ $(document).ready(function () {
     }
   });
 
-  // handle the event of switching light-dark mode
+  // Handle light/dark mode switch
   $("#light-dark-mode-switch").change(function () {
     $("body").toggleClass("dark-mode");
     $(".message-box").toggleClass("dark");
@@ -238,8 +244,55 @@ $(document).ready(function () {
     lightMode = !lightMode;
   });
 
+  // Populate voice options dynamically
+  const populateVoiceOptions = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const voiceOptions = $("#voice-options");
+    voiceOptions.empty();
+    voices.forEach((voice) => {
+      voiceOptions.append(`<option value="${voice.name}">${voice.name} (${voice.lang})</option>`);
+    });
+  };
+
+  // Update voiceOption when the user selects a new voice
   $("#voice-options").change(function () {
     voiceOption = $(this).val();
-    console.log(voiceOption);
+    
   });
+
+  // Wait for voices to be loaded
+  window.speechSynthesis.onvoiceschanged = populateVoiceOptions;
 });
+
+// Text-to-speech method
+function textToSpeech(text, voiceName = "") {
+  if (!('speechSynthesis' in window)) {
+    console.error("Your browser does not support the Web Speech API.");
+    return;
+  }
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  const voices = window.speechSynthesis.getVoices();
+  const selectedVoice = voices.find(voice => voice.name === voiceName);
+
+  if (selectedVoice) {
+    utterance.voice = selectedVoice;
+    
+  } else {
+    console.warn(`Voice "${voiceName}" not found. Using default voice.`);
+  }
+
+  utterance.rate = 1; // Speed (0.1 to 10)
+  utterance.pitch = 1; // Pitch (0 to 2)
+  utterance.volume = 1; // Volume (0 to 1)
+
+  window.speechSynthesis.speak(utterance);
+
+  utterance.onend = () => {
+    console.log("Text-to-speech finished.");
+  };
+
+  utterance.onerror = (event) => {
+    console.error("Error during text-to-speech:", event.error);
+  };
+}
