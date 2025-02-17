@@ -54,7 +54,7 @@ def speech_to_text(audio_binary):
         # Parse the response to get the transcribed text
         if response_json.get('results'):
             text = response_json['results'][0]['alternatives'][0]['transcript']
-            print('Recognized text:', text)
+            #print('Recognized text:', text)
             return text
         else:
             print('No transcription results found.')
@@ -96,13 +96,13 @@ def process_message(user_message):
         }
 
         # Debug the request payload and headers
-        print("Request Payload:", data)
-        print("Request Headers:", headers)
+        #print("Request Payload:", data)
+        #print("Request Headers:", headers)
         response = requests.post(TOGETHER_API_SERVICE_URL, json=data, headers=headers)
 
         # Print the full response for debugging
-        print("Status Code:", response.status_code)
-        print("Response JSON:", response.json())
+        #print("Status Code:", response.status_code)
+        #print("Response JSON:", response.json())
 
         # Parse the response
         response_json = response.json()
