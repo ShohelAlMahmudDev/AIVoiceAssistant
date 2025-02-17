@@ -14,16 +14,41 @@ An AI-powered voice assistant that utilizes speech recognition and natural langu
 
 Ensure you have the following dependencies installed:
 
-- Python 3.x
-- **SpeechRecognition**: For converting speech to text.
-- **pyttsx3**: For text-to-speech conversion.
-- **pyaudio**: For microphone input.
-- **requests**: For making API requests (if applicable).
+  - **Flask**
+  - **Flask_Cors**
+  - **requests**
+  - **python-dotenv**
+  - **jsonify**
+
 
 ## Installation
 
 ### 1. Clone the repository
 
-```bash
 git clone https://github.com/ShohelAlMahmudDev/AIVoiceAssistant.git
 cd AIVoiceAssistant
+
+### 2. Install required dependencies:
+
+  pip install -r requirements.txt
+
+### 3. Set up your environment variables in the .env file:
+
+  - **WATSON_API_KEY_STT=your_watson_api_key**
+  - **WATSON_API_SERVICE_URL_STT=your_watson_api_url**
+  - **TOGETHER_API_KEY=your_together_api_key**
+  - **TOGETHER_API_SERVICE_URL=your_together_api_url**
+
+## Usage
+  Run the server:
+
+  python server.py
+  Open the app in your browser at http://localhost:8000.
+## If you want to run in docker do the following
+  if you have docker running on your machine run
+  -**docker-compose up** for attached mode
+  -**docker-compose up -d** for detached mode
+## If you want to stop and remove the docker run the following command
+  -**docker-compose down**
+## License
+  MIT
