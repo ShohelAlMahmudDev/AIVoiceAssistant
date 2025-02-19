@@ -1,6 +1,6 @@
 # AI Voice Assistant
 
-An AI-powered voice assistant that utilizes speech recognition and natural language processing to understand and execute user commands. This project is designed to allow users to interact with their computer using voice commands, perform actions, and get verbal feedback.
+An AI-powered voice assistant that utilizes speech recognition and natural language processing to understand and answer your questions. This project is designed to allow users to interact with their computer using voice commands, and get verbal feedback.
 
 ## Features
 
