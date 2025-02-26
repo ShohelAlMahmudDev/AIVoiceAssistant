@@ -37,5 +37,5 @@ def process_message_route():
 def favicon():
     return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
-if __name__ == "__main__":
-    app.run(port=8000, host='0.0.0.0')
+# if __name__ == "__main__":
+#     app.run(port=8000, host='0.0.0.0')

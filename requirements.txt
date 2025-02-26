@@ -3,3 +3,4 @@ Flask_Cors
 requests
 python-dotenv
 jsonify
+gunicorn

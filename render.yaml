@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: my-flask-app
+    runtime: docker
+    env: docker
+    repo: https://github.com/ShohelAlMahmudDev/AIVoiceAssistant
+    branch: main
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8000
+    dockerfilePath: Dockerfile
+    autoDeploy: true
