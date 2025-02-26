@@ -1,12 +1,14 @@
+// script.js
+
 let lightMode = true;
-let recorder = null;
 let recording = false;
-let voiceOption = "Google US English"; // Default voice
+let voiceOption = ""; // Default voice
 const responses = [];
 const botRepeatButtonIDToIndexMap = {};
 const userRepeatButtonIDToRecordingMap = {};
 const baseUrl = window.location.origin;
 
+// Animation functions
 async function showBotLoadingAnimation() {
   await sleep(500);
   $(".loading-animation")[1].style.display = "inline-block";
@@ -25,23 +27,30 @@ function hideUserLoadingAnimation() {
   $(".loading-animation")[0].style.display = "none";
 }
 
+// Send audio blob to server for speech-to-text conversion
 const getSpeechToText = async (userRecording) => {
   try {
+    // Pass the MIME type in the header so the server knows the audio format
     let response = await fetch(baseUrl + "/speech-to-text", {
       method: "POST",
+      headers: {
+        "Content-Type": userRecording.mimeType,
+      },
       body: userRecording.audioBlob,
     });
+    console.log("Speech-to-text URL:", baseUrl + "/speech-to-text");
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
     response = await response.json();
-    return response.text; // Ensure the backend returns { text: "recognized text" }
+    return response.text; // Expected response format: { text: "recognized text" }
   } catch (error) {
     console.error("Error in getSpeechToText:", error);
     return null;
   }
 };
 
+// Process user text message by sending it to your backend
 const processUserMessage = async (userMessage) => {
   try {
     let response = await fetch(baseUrl + "/process-message", {
@@ -49,11 +58,12 @@ const processUserMessage = async (userMessage) => {
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({ userMessage: userMessage, voice: voiceOption }),
     });
+    console.log("process-message URL:", response.url);
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
     response = await response.json();
-    return response; // Ensure the backend returns { response: "response text" }
+    return response; // Expected response format: { response: "response text" }
   } catch (error) {
     console.error("Error in processUserMessage:", error);
     return null;
@@ -62,52 +72,22 @@ const processUserMessage = async (userMessage) => {
 
 const cleanTextInput = (value) => {
   return value
-    .trim() // remove starting and ending spaces
-    .replace(/[\n\t]/g, "") // remove newlines and tabs
-    .replace(/<[^>]*>/g, "") // remove HTML tags
-    .replace(/[<>&;]/g, ""); // sanitize inputs
-};
-
-const recordAudio = () => {
-  return new Promise(async (resolve) => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mediaRecorder = new MediaRecorder(stream);
-    const audioChunks = [];
-
-    mediaRecorder.addEventListener("dataavailable", (event) => {
-      audioChunks.push(event.data);
-    });
-
-    const start = () => mediaRecorder.start();
-
-    const stop = () =>
-      new Promise((resolve) => {
-        mediaRecorder.addEventListener("stop", () => {
-          const audioBlob = new Blob(audioChunks, { type: "audio/mpeg" });
-          const audioUrl = URL.createObjectURL(audioBlob);
-          const audio = new Audio(audioUrl);
-          const play = () => audio.play();
-          resolve({ audioBlob, audioUrl, play });
-        });
-
-        mediaRecorder.stop();
-      });
-
-    resolve({ start, stop });
-  });
+    .trim()
+    .replace(/[\n\t]/g, "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/[<>&;]/g, "");
 };
 
 const sleep = (time) => new Promise((resolve) => setTimeout(resolve, time));
 
+// toggleRecording uses the Recorder.js functions defined in recorder.js
 const toggleRecording = async () => {
   if (!recording) {
-    recorder = await recordAudio();
+    await startRecording(); // from recorder.js
     recording = true;
-    recorder.start();
   } else {
-    const audio = await recorder.stop();
-    await sleep(1000); // Add a delay to ensure recording stops properly
-    recording = false; // Reset recording state
+    const audio = await stopRecording(); // from recorder.js
+    recording = false;
     return audio;
   }
 };
@@ -117,7 +97,6 @@ const getRandomID = () => {
 };
 
 const scrollToBottom = () => {
-  // Scroll the chat window to the bottom
   $("#chat-window").animate({
     scrollTop: $("#chat-window")[0].scrollHeight,
   });
@@ -131,20 +110,24 @@ const populateUserMessage = (userMessage, userRecording) => {
     userRepeatButtonIDToRecordingMap[userRepeatButtonID] = userRecording;
     hideUserLoadingAnimation();
     $("#message-list").append(
-      `<div class='message-line my-text'><div class='message-box my-text${
-        !lightMode ? " dark" : ""
-      }'><div class='me'>${userMessage}</div></div>
-            <button id='${userRepeatButtonID}' class='btn volume repeat-button' onclick='userRepeatButtonIDToRecordingMap[this.id].play()'><i class='fa fa-volume-up'></i></button>
-            </div>`
+      `<div class='message-line my-text'>
+          <div class='message-box my-text${!lightMode ? " dark" : ""}'>
+              <div class='me'>${userMessage}</div>
+          </div>
+          <button id='${userRepeatButtonID}' class='btn volume repeat-button' onclick='userRepeatButtonIDToRecordingMap[this.id].play()'>
+              <i class='fa fa-volume-up'></i>
+          </button>
+       </div>`
     );
   } else {
     $("#message-list").append(
-      `<div class='message-line my-text'><div class='message-box my-text${
-        !lightMode ? " dark" : ""
-      }'><div class='me'>${userMessage}</div></div></div>`
+      `<div class='message-line my-text'>
+          <div class='message-box my-text${!lightMode ? " dark" : ""}'>
+              <div class='me'>${userMessage}</div>
+          </div>
+       </div>`
     );
   }
-
   scrollToBottom();
 };
 
@@ -155,83 +138,76 @@ const populateBotResponse = async (userMessage) => {
     hideBotLoadingAnimation();
     return; // Exit if there's an error
   }
-
   responses.push(response);
-
   const repeatButtonID = getRandomID();
   botRepeatButtonIDToIndexMap[repeatButtonID] = responses.length - 1;
   hideBotLoadingAnimation();
 
-  // Append the bot's response to the message list
   $("#message-list").append(
-    `<div class='message-line'><div class='message-box${
-      !lightMode ? " dark" : ""
-    }'>${
-      response.response
-    }</div><button id='${repeatButtonID}' class='btn volume repeat-button' onclick='textToSpeech(responses[botRepeatButtonIDToIndexMap[this.id]].response, voiceOption)'><i class='fa fa-volume-up'></i></button></div>`
+    `<div class='message-line'>
+        <div class='message-box${!lightMode ? " dark" : ""}'>
+          ${response.response}
+        </div>
+        <button id='${repeatButtonID}' class='btn volume repeat-button' onclick='textToSpeech(responses[botRepeatButtonIDToIndexMap[this.id]].response, voiceOption)'>
+          <i class='fa fa-volume-up'></i>
+        </button>
+     </div>`
   );
 
   // Use Web Speech API to speak the bot's response
   textToSpeech(response.response, voiceOption);
-
   scrollToBottom();
 };
 
 $(document).ready(function () {
-  // Listen for the "Enter" key being pressed in the input field
+  // Listen for the "Enter" key in the input field
   $("#message-input").keyup(function (event) {
     let inputVal = cleanTextInput($("#message-input").val());
-
-    if (event.keyCode === 13 && inputVal != "") {
+    if (event.keyCode === 13 && inputVal !== "") {
       const message = inputVal;
-
       populateUserMessage(message, null);
       populateBotResponse(message);
     }
-
+    // Toggle send button icon based on input presence
     inputVal = $("#message-input").val();
-
-    if (inputVal == "" || inputVal == null) {
-      $("#send-button")
-        .removeClass("send")
-        .addClass("microphone")
-        .html("<i class='fa fa-microphone'></i>");
+    if (!inputVal) {
+      $("#send-button").removeClass("send").addClass("microphone").html("<i class='fa fa-microphone'></i>");
     } else {
-      $("#send-button")
-        .removeClass("microphone")
-        .addClass("send")
-        .html("<i class='fa fa-paper-plane'></i>");
+      $("#send-button").removeClass("microphone").addClass("send").html("<i class='fa fa-paper-plane'></i>");
     }
   });
 
   // When the user clicks the "Send" button
   $("#send-button").click(async function () {
     if ($("#send-button").hasClass("microphone") && !recording) {
+      // Start recording
       toggleRecording();
       $(".fa-microphone").css("color", "#f44336");
       console.log("start recording");
       recording = true;
     } else if (recording) {
+      // Stop recording and process the audio
       toggleRecording().then(async (userRecording) => {
         console.log("stop recording");
+        console.log("MIME type:", userRecording.mimeType);
         await showUserLoadingAnimation();
         const userMessage = await getSpeechToText(userRecording);
+        if (!userMessage) {
+          console.error("No transcription returned; skipping message processing.");
+          hideUserLoadingAnimation();
+          return;
+        }
         populateUserMessage(userMessage, userRecording);
         populateBotResponse(userMessage);
       });
       $(".fa-microphone").css("color", "#125ee5");
       recording = false;
     } else {
-      // Get the message the user typed in
+      // Handle text message input case
       const message = cleanTextInput($("#message-input").val());
-
       populateUserMessage(message, null);
       populateBotResponse(message);
-
-      $("#send-button")
-        .removeClass("send")
-        .addClass("microphone")
-        .html("<i class='fa fa-microphone'></i>");
+      $("#send-button").removeClass("send").addClass("microphone").html("<i class='fa fa-microphone'></i>");
     }
   });
 
@@ -249,49 +225,54 @@ $(document).ready(function () {
     const voices = window.speechSynthesis.getVoices();
     const voiceOptions = $("#voice-options");
     voiceOptions.empty();
+    if (voices.length === 0) {
+      console.warn("No voices available.");
+      return;
+    }
     voices.forEach((voice) => {
       voiceOptions.append(`<option value="${voice.name}">${voice.name} (${voice.lang})</option>`);
     });
+    if (!voiceOption && voices.length > 0) {
+      voiceOption = voices[0].name;
+      voiceOptions.val(voiceOption);
+    }
   };
 
-  // Update voiceOption when the user selects a new voice
   $("#voice-options").change(function () {
     voiceOption = $(this).val();
-    
+    console.log("Selected voice:", voiceOption);
   });
 
-  // Wait for voices to be loaded
-  window.speechSynthesis.onvoiceschanged = populateVoiceOptions;
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = populateVoiceOptions;
+  } else {
+    console.warn("onvoiceschanged event not supported. Falling back to setTimeout.");
+    setTimeout(populateVoiceOptions, 1000);
+  }
+  populateVoiceOptions();
 });
 
-// Text-to-speech method
+// Text-to-speech using Web Speech API
 function textToSpeech(text, voiceName = "") {
-  if (!('speechSynthesis' in window)) {
+  if (!("speechSynthesis" in window)) {
     console.error("Your browser does not support the Web Speech API.");
     return;
   }
-
   const utterance = new SpeechSynthesisUtterance(text);
   const voices = window.speechSynthesis.getVoices();
-  const selectedVoice = voices.find(voice => voice.name === voiceName);
-
+  const selectedVoice = voices.find((voice) => voice.name === voiceName);
   if (selectedVoice) {
     utterance.voice = selectedVoice;
-    
   } else {
     console.warn(`Voice "${voiceName}" not found. Using default voice.`);
   }
-
-  utterance.rate = 1; // Speed (0.1 to 10)
-  utterance.pitch = 1; // Pitch (0 to 2)
-  utterance.volume = 1; // Volume (0 to 1)
-
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  utterance.volume = 1;
   window.speechSynthesis.speak(utterance);
-
   utterance.onend = () => {
     console.log("Text-to-speech finished.");
   };
-
   utterance.onerror = (event) => {
     console.error("Error during text-to-speech:", event.error);
   };
