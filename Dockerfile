@@ -17,4 +17,4 @@ EXPOSE 8000
 ENV PORT 8000
 
 # Run gunicorn server with environment variable for the port
-CMD ["gunicorn", "server:app", "--bind", "0.0.0.0:$PORT"]
+CMD ["gunicorn", "server:app", "--bind", "0.0.0.0:8000"]

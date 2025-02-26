@@ -38,7 +38,6 @@ const getSpeechToText = async (userRecording) => {
       },
       body: userRecording.audioBlob,
     });
-    console.log("Speech-to-text URL:", baseUrl + "/speech-to-text");
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
@@ -58,7 +57,6 @@ const processUserMessage = async (userMessage) => {
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({ userMessage: userMessage, voice: voiceOption }),
     });
-    console.log("process-message URL:", response.url);
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
@@ -188,8 +186,7 @@ $(document).ready(function () {
     } else if (recording) {
       // Stop recording and process the audio
       toggleRecording().then(async (userRecording) => {
-        console.log("stop recording");
-        console.log("MIME type:", userRecording.mimeType);
+        console.log("stop recording"); 
         await showUserLoadingAnimation();
         const userMessage = await getSpeechToText(userRecording);
         if (!userMessage) {
