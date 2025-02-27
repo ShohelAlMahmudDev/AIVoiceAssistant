@@ -50,5 +50,11 @@ cd AIVoiceAssistant
   -**docker-compose up -d** for detached mode
 ## If you want to stop and remove the docker run the following command
   -**docker-compose down**
+
 ## License
-  MIT
+This project is licensed under the [MIT License](LICENSE).
+
+## Contact
+For questions, suggestions, or contributions, please reach out:
+- **Project Maintainer:** [ShohelAlMahmudDev](https://github.com/ShohelAlMahmudDev)
+- **Email:** shohelcse@yahoo.com
