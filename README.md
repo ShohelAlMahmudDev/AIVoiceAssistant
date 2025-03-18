@@ -2,6 +2,10 @@
 
 An AI-powered voice assistant that utilizes speech recognition and natural language processing to understand and execute user commands. This project is designed to allow users to interact with their computer using voice commands, perform actions, and get verbal feedback.
 
+## Demo
+Experience the AI Voice Assistant in action:  
+[**Live Demo**](https://aivoiceassistant-f8z0.onrender.com)
+
 ## Features
 
 - **Speech Recognition**: Converts voice commands into text for processing.
